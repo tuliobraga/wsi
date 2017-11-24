@@ -21,7 +21,7 @@ ENV DAGSIM_REPOSITORY https://github.com/eubr-bigsea/dagSim
 ENV DAGSIM_HOME /opt/dagSim
 ENV LUNDSTROM_REPOSITORY https://github.com/eubr-bigsea/lundstrom
 ENV LUNDSTROM_HOME /opt/lundstrom
-ENV WS_LUNDSTROM_REPOSITORY https://github.com/eubr-bigsea/lundstrom-ws
+ENV WS_LUNDSTROM_REPOSITORY https://github.com/eubr-bigsea/WS_Lundstrom
 ENV OPT_COMMON_REPOSITORY https://github.com/eubr-bigsea/OPT_Common
 ENV OPT_COMMON_HOME /opt/OPT_Common
 ENV OPT_IC_REPOSITORY https://github.com/eubr-bigsea/OPT_IC
@@ -35,7 +35,7 @@ ENV SPARK_LOG_PARSER_HOME /opt/SparkLogParser
 ENV WSI_PASSWORD w51p455w0rd
 
 # Install environment dependencies
-RUN apt-get update && apt-get install -y nano vim git maven openjdk-8-jdk wget make gcc libmysqlclient-dev liblua5.3-dev python2.7 python vsftpd curl openmpi-bin openmpi-doc libopenmpi-dev
+RUN apt-get update && apt-get install -y nano vim git maven openjdk-8-jdk wget make gcc libmysqlclient-dev liblua5.3-dev python2.7 python python-numpy vsftpd curl openmpi-bin openmpi-doc libopenmpi-dev
 
 # Install tomcat in ${CATALINA_HOME}
 RUN mkdir /tarball && \
@@ -100,6 +100,15 @@ RUN cd /tarball && \
     mvn package && \
     install -D -o ${WSI_USER} -g ${WSI_USER} target/bigsea.war /opt/apache-tomcat-${TOMCAT_VERSION}/webapps/bigsea.war
 
+# Download and install the WS_Lundstrom
+RUN cd /tarball && \
+    git clone ${WS_LUNDSTROM_REPOSITORY} && \
+    cd WS_Lundstrom && \
+    mvn initialize && \
+    mvn compile && \
+    mvn package && \
+    install -D -o ${WSI_USER} -g ${WSI_USER} target/ws-lundstrom.war /opt/apache-tomcat-${TOMCAT_VERSION}/webapps/ws-lundstrom.war
+
 # Download and install OPT_Common
 RUN cd /tarball && \
     git clone ${OPT_COMMON_REPOSITORY} && \
@@ -132,7 +141,7 @@ RUN cd /tarball && \
     mkdir -p ${OPT_DEADLINE_HOME} && \
     cp opt_deadline ${OPT_DEADLINE_HOME} && \
     chown -R ${WSI_USER}:${WSI_USER} ${OPT_DEADLINE_HOME}
-    
+
 
 # Download and install Spark Parse Log
 RUN cd /tarball && \
@@ -154,14 +163,10 @@ RUN mkdir -p ${EXAMPLE_DATA_HOME} && \
 # Copy Configuration file
 COPY wsi_config.xml ${WSI_CONFIG_FILE}
 RUN chown ${WSI_USER}:${WSI_USER} ${WSI_CONFIG_FILE}
-RUN chmod ugo+x /tarball/wsi/scripts/update_wsi_config.sh
 
 # Go on user
 USER ${WSI_USER}
 WORKDIR ${WSI_HOME}
-
-# Update wsi_config.xml
-RUN /tarball/wsi/scripts/update_wsi_config.sh
 
 # Create directory for upload
 RUN mkdir ${WSI_HOME}/Uploaded
@@ -173,5 +178,4 @@ RUN cd ${EXAMPLE_DATA_HOME} && \
 EXPOSE 8080
 
 # Default command launch tomcat
-CMD ["/bin/bash", "-c", "/tarball/wsi/scripts/update_wsi_config.sh && catalina.sh run;"]
-
+CMD ["catalina.sh", "run"]
